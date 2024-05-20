@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"sync"
 	"time"
 )
@@ -25,16 +27,31 @@ var stuffToInstall = []string{
 	"bash-language-server",
 }
 
+var cmd *exec.Cmd
+
 func main() {
+	cmd = exec.Command("/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"")
+	stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
+	cmd.Stdout = &stdout
+	cmd.Stdin = &stdin
+	if err := cmd.Run(); err != nil {
+		fmt.Println(err)
+	}
+
+	buf := bufio.NewReader(cmd.Stdin)
+	fmt.Printf("> ")
+	sentence, err := buf.ReadBytes('\n')
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(sentence))
+
 	results := []string{}
 	wg := sync.WaitGroup{}
 	for _, installing := range stuffToInstall {
 		go func() {
 			wg.Add(1)
-			stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
-			cmd := exec.Command("brew", "install", installing)
-			cmd.Stdout = &stdout
-			cmd.Stdin = &stdin
+			cmd = exec.Command("brew", "install", installing)
 			err := cmd.Run()
 			if err != nil {
 				fmt.Println(err)
@@ -45,8 +62,10 @@ func main() {
 		wg.Wait()
 	}
 
-	os.WriteFile("~/.config/helix/config.toml", getHelixConfig(), 0644)
-	os.WriteFile("~/.config/helix/themes/custom_theme.toml", getHelixTheme(), 0644)
+	if !slices.Contains(results, "helix") {
+		os.WriteFile("~/.config/helix/config.toml", getHelixConfig(), 0644)
+		os.WriteFile("~/.config/helix/themes/custom_theme.toml", getHelixTheme(), 0644)
+	}
 }
 
 func getHelixConfig() []byte {
