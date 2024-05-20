@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,7 +26,25 @@ var stuffToInstall = []string{
 }
 
 func main() {
-	exec.Command("brew", "install", strings.Join(stuffToInstall, " "))
+	results := []string{}
+	wg := sync.WaitGroup{}
+	for _, installing := range stuffToInstall {
+		go func() {
+			wg.Add(1)
+			stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
+			cmd := exec.Command("brew", "install", installing)
+			cmd.Stdout = &stdout
+			cmd.Stdin = &stdin
+			err := cmd.Run()
+			if err != nil {
+				fmt.Println(err)
+			}
+			results = append(results, fmt.Sprintf("%s %s", installing, cmd.Stdout))
+			wg.Done()
+		}()
+		wg.Wait()
+	}
+
 	os.WriteFile("~/.config/helix/config.toml", getHelixConfig(), 0644)
 	os.WriteFile("~/.config/helix/themes/custom_theme.toml", getHelixTheme(), 0644)
 }
