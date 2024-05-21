@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
-	"sync"
 	"time"
 )
 
@@ -17,6 +17,9 @@ var stuffToInstall = []string{
 	"helix",
 	"postman",
 	"go",
+	"git",
+	"helix",
+	"nnn",
 	"vue-language-server",
 	"typescript-language-server",
 	"vscode-css-language-server",
@@ -47,19 +50,17 @@ func main() {
 	fmt.Println(string(sentence))
 
 	results := []string{}
-	wg := sync.WaitGroup{}
+	ch := make(chan struct{}, runtime.NumCPU()-2)
 	for _, installing := range stuffToInstall {
-		go func() {
-			wg.Add(1)
+		go func(installing string) {
 			cmd = exec.Command("brew", "install", installing)
 			err := cmd.Run()
 			if err != nil {
 				fmt.Println(err)
 			}
-			results = append(results, fmt.Sprintf("%s %s", installing, cmd.Stdout))
-			wg.Done()
-		}()
-		wg.Wait()
+			results = append(results, fmt.Sprintf("%s: %s", installing, cmd.Stdout))
+			ch <- struct{}{}
+		}(installing)
 	}
 
 	if !slices.Contains(results, "helix") {
