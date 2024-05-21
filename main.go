@@ -33,21 +33,26 @@ var stuffToInstall = []string{
 var cmd *exec.Cmd
 
 func main() {
-	cmd = exec.Command("/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"")
-	stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
-	cmd.Stdout = &stdout
+	// cmd = exec.Command("/bin/bash/", "-c", "\"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"")
+	cmd = exec.Command("npm", "create", "vite@latest")
+	stdin := bytes.Buffer{}
 	cmd.Stdin = &stdin
-	if err := cmd.Run(); err != nil {
-		fmt.Println(err)
+	stdout, _ := cmd.StdoutPipe()
+	brewScan := bufio.NewScanner(stdout)
+	userScan := bufio.NewScanner(os.Stdin)
+	if err := cmd.Start(); err != nil {
+		fmt.Println("error during run: ", err)
 	}
 
-	buf := bufio.NewReader(cmd.Stdin)
-	fmt.Printf("> ")
-	sentence, err := buf.ReadBytes('\n')
-	if err != nil {
-		fmt.Println(err)
+	for brewScan.Scan() {
+		fmt.Println("brew: ", brewScan.Text())
+		for userScan.Scan() {
+			cmd.Stdin = bytes.NewReader([]byte(userScan.Text()))
+			if userScan.Text()[len(userScan.Text())-2:len(userScan.Text())] == "\n" {
+				break
+			}
+		}
 	}
-	fmt.Println(string(sentence))
 
 	results := []string{}
 	ch := make(chan struct{}, runtime.NumCPU()-2)
