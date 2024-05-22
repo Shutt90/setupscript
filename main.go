@@ -20,6 +20,7 @@ var stuffToInstall = []string{
 	"git",
 	"helix",
 	"nnn",
+	"warp",
 	"vue-language-server",
 	"typescript-language-server",
 	"vscode-css-language-server",
@@ -28,6 +29,7 @@ var stuffToInstall = []string{
 	"vscode-html-language-server",
 	"gopls",
 	"bash-language-server",
+	"yaml-language-server",
 }
 
 var cmd *exec.Cmd
@@ -41,15 +43,16 @@ func main() {
 	brewScan := bufio.NewScanner(stdout)
 	userScan := bufio.NewScanner(os.Stdin)
 	if err := cmd.Start(); err != nil {
-		fmt.Println("error during run: ", err)
+		fmt.Println("error during start: ", err)
 	}
 
 	for brewScan.Scan() {
 		fmt.Println("brew: ", brewScan.Text())
 		for userScan.Scan() {
-			cmd.Stdin = bytes.NewReader([]byte(userScan.Text()))
-			if userScan.Text()[len(userScan.Text())-2:len(userScan.Text())] == "\n" {
-				break
+			userScan.Text()
+			if userScan.Text() != "" {
+				cmd.Stdin.Read([]byte(userScan.Text()))
+				continue
 			}
 		}
 	}
